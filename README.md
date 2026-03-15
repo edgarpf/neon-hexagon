@@ -34,3 +34,4 @@ Since the game has no external dependencies or assets (other than a Google Font)
 1. Clone the repository:
    ```bash
    git clone [https://github.com/edgarpf/neon-hexagon.git](https://github.com/edgarpf/neon-hexagon.git)
+2. Open the folder and double-click index.html to open it in any modern web browser.
