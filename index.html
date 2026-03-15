@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,7 +8,8 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -28,7 +30,10 @@
             content: " ";
             display: block;
             position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
             z-index: 2;
             background-size: 100% 4px, 6px 100%;
@@ -37,7 +42,10 @@
 
         #ui {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -49,11 +57,27 @@
             text-shadow: 2px 2px 0px #000;
         }
 
-        h1 { font-size: 4vw; margin-bottom: 20px; color: #fff; }
-        @media (max-width: 768px) { h1 { font-size: 8vw; } }
-        
-        .blink { animation: blinker 1s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        h1 {
+            font-size: 4vw;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 8vw;
+            }
+        }
+
+        .blink {
+            animation: blinker 1s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% {
+                opacity: 0;
+            }
+        }
 
         #hud {
             position: absolute;
@@ -67,6 +91,7 @@
         }
     </style>
 </head>
+
 <body class="crt">
 
     <div id="hud">
@@ -81,403 +106,404 @@
 
     <canvas id="gameCanvas"></canvas>
 
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const timeDisplay = document.getElementById('timeDisplay');
-const bestDisplay = document.getElementById('bestDisplay');
-const ui = document.getElementById('ui');
-const title = document.getElementById('title');
-const subtitle = document.getElementById('subtitle');
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const bestDisplay = document.getElementById('bestDisplay');
+        const ui = document.getElementById('ui');
+        const title = document.getElementById('title');
+        const subtitle = document.getElementById('subtitle');
 
-let width, height, cx, cy;
-function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-    cx = width / 2;
-    cy = height / 2;
-}
-window.addEventListener('resize', resize);
-resize();
+        let width, height, cx, cy;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            cx = width / 2;
+            cy = height / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-const palettes = [
-    { bg: '#1a0b2e', wall: '#f72585', center: '#7209b7', player: '#4cc9f0', lines: '#3a0ca3' },
-    { bg: '#001a00', wall: '#00ff00', center: '#004d00', player: '#ffffff', lines: '#003300' },
-    { bg: '#111111', wall: '#ff9e00', center: '#ff0000', player: '#ffea00', lines: '#550000' },
-    { bg: '#0d1b2a', wall: '#00b4d8', center: '#1b263b', player: '#caf0f8', lines: '#415a77' }
-];
-let currentPalette = palettes[0];
+        const palettes = [
+            { bg: '#1a0b2e', wall: '#f72585', center: '#7209b7', player: '#4cc9f0', lines: '#3a0ca3' },
+            { bg: '#001a00', wall: '#00ff00', center: '#004d00', player: '#ffffff', lines: '#003300' },
+            { bg: '#111111', wall: '#ff9e00', center: '#ff0000', player: '#ffea00', lines: '#550000' },
+            { bg: '#0d1b2a', wall: '#00b4d8', center: '#1b263b', player: '#caf0f8', lines: '#415a77' }
+        ];
+        let currentPalette = palettes[0];
 
-let state = 'menu';
-let time = 0;
-let bestTime = 0;
-let lastTime = 0;
-let gameSpeed = 1;
-let globalRotation = 0;
-let rotationSpeed = 0.15; 
+        let state = 'menu';
+        let time = 0;
+        let bestTime = 0;
+        let lastTime = 0;
+        let gameSpeed = 1;
+        let globalRotation = 0;
+        let rotationSpeed = 0.15;
 
-// Notification variables
-let currentLevel = 0;
-let levelUpAlpha = 0;
+        // Notification variables
+        let currentLevel = 0;
+        let levelUpAlpha = 0;
 
-const player = {
-    angle: Math.PI / 2,
-    radius: 60,
-    size: 8,
-    moveSpeed: 3.5, 
-    dir: 0
-};
+        const player = {
+            angle: Math.PI / 2,
+            radius: 60,
+            size: 8,
+            moveSpeed: 3.5,
+            dir: 0
+        };
 
-let walls = [];
-const hexRadius = 40;
-const wallThickness = 15;
+        let walls = [];
+        const hexRadius = 40;
+        const wallThickness = 15;
 
-function createWall() {
-    const gapIndex = Math.floor(Math.random() * 6);
-    const pattern = [1,1,1,1,1,1];
-    pattern[gapIndex] = 0;
-    
-    if (Math.random() > 0.7) {
-        let gap2 = (gapIndex + 1 + Math.floor(Math.random() * 4)) % 6;
-        pattern[gap2] = 0;
-    }
+        function createWall() {
+            const gapIndex = Math.floor(Math.random() * 6);
+            const pattern = [1, 1, 1, 1, 1, 1];
+            pattern[gapIndex] = 0;
 
-    walls.push({
-        distance: Math.max(width, height),
-        pattern: pattern
-    });
-}
+            if (Math.random() > 0.7) {
+                let gap2 = (gapIndex + 1 + Math.floor(Math.random() * 4)) % 6;
+                pattern[gap2] = 0;
+            }
 
-let particles = [];
-class Particle {
-    constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.angle = Math.random() * Math.PI * 2;
-        this.speed = Math.random() * 4 + 2;
-        this.gravity = 0.1;
-        this.friction = 0.98;
-        this.alpha = 1;
-        this.life = Math.random() * 30 + 30;
-        this.size = Math.random() * 3 + 1;
-    }
+            walls.push({
+                distance: Math.max(width, height),
+                pattern: pattern
+            });
+        }
 
-    update() {
-        this.speed *= this.friction;
-        this.speed -= this.gravity * Math.sin(this.angle);
-        this.x += Math.cos(this.angle) * this.speed;
-        this.y += Math.sin(this.angle) * this.speed;
-        this.life--;
-        this.alpha = this.life / 60;
-    }
+        let particles = [];
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * 4 + 2;
+                this.gravity = 0.1;
+                this.friction = 0.98;
+                this.alpha = 1;
+                this.life = Math.random() * 30 + 30;
+                this.size = Math.random() * 3 + 1;
+            }
 
-    draw() {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, this.alpha);
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.size, this.size);
-        ctx.restore();
-    }
-}
+            update() {
+                this.speed *= this.friction;
+                this.speed -= this.gravity * Math.sin(this.angle);
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                this.life--;
+                this.alpha = this.life / 60;
+            }
 
-function createExplosion(x, y, color) {
-    for (let i = 0; i < 30; i++) {
-        particles.push(new Particle(x, y, color));
-    }
-}
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.restore();
+            }
+        }
 
-window.addEventListener('keydown', (e) => {
-    if (state === 'menu' || state === 'gameover') {
-        if (e.code === 'Space') startGame();
-        return;
-    }
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') player.dir = -1;
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') player.dir = 1;
-});
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 30; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
 
-window.addEventListener('keyup', (e) => {
-    if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.dir === -1) player.dir = 0;
-    if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.dir === 1) player.dir = 0;
-});
+        window.addEventListener('keydown', (e) => {
+            if (state === 'menu' || state === 'gameover') {
+                if (e.code === 'Space') startGame();
+                return;
+            }
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') player.dir = -1;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') player.dir = 1;
+        });
 
-window.addEventListener('touchstart', (e) => {
-    if (state === 'menu' || state === 'gameover') {
-        startGame();
-        return;
-    }
-    const touchX = e.touches[0].clientX;
-    player.dir = touchX < cx ? -1 : 1;
-}, {passive: false});
+        window.addEventListener('keyup', (e) => {
+            if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.dir === -1) player.dir = 0;
+            if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.dir === 1) player.dir = 0;
+        });
 
-window.addEventListener('touchend', () => { player.dir = 0; });
+        window.addEventListener('touchstart', (e) => {
+            if (state === 'menu' || state === 'gameover') {
+                startGame();
+                return;
+            }
+            const touchX = e.touches[0].clientX;
+            player.dir = touchX < cx ? -1 : 1;
+        }, { passive: false });
 
-// --- MUSIC LOGIC ---
-const musicTracks = [
-    'audio/track1.mp3',
-    'audio/track2.mp3',
-    'audio/track3.mp3',
-    'audio/track4.mp3',
-    'audio/track5.mp3',
-    'audio/track6.mp3'
-];
-let currentMusic = null;
+        window.addEventListener('touchend', () => { player.dir = 0; });
 
-function startGame() {
-    state = 'playing';
-    ui.style.display = 'none';
-    time = 0;
-    gameSpeed = 1;
-    rotationSpeed = 0.15; 
-    currentLevel = 0;
-    levelUpAlpha = 0;
-    walls = [];
-    player.angle = Math.PI / 2;
-    particles = []; 
-    currentPalette = palettes[Math.floor(Math.random() * palettes.length)];
-    
-    if (currentMusic) {
-        currentMusic.pause();
-        currentMusic.currentTime = 0;
-    }
-    const randomTrack = musicTracks[Math.floor(Math.random() * musicTracks.length)];
-    currentMusic = new Audio(randomTrack);
-    currentMusic.loop = true;
-    currentMusic.volume = 0.6;
-    currentMusic.play().catch(e => console.log("Music play failed:", e));
+        // --- MUSIC LOGIC ---
+        const musicTracks = [
+            'audio/track1.mp3',
+            'audio/track2.mp3',
+            'audio/track3.mp3',
+            'audio/track4.mp3',
+            'audio/track5.mp3',
+            'audio/track6.mp3'
+        ];
+        let currentMusic = null;
 
-    initAudio(); 
-    lastTime = performance.now();
-    createWall();
-    requestAnimationFrame(loop);
-}
-
-function triggerGameOver() {
-    state = 'gameover_sequence';
-    
-    if (currentMusic) {
-        currentMusic.pause();
-    }
-    
-    playCrashSound(); 
-    let normalizedAngle = (player.angle) % (Math.PI * 2);
-    if (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
-    
-    const absoluteX = cx + player.radius * Math.cos(normalizedAngle - globalRotation);
-    const absoluteY = cy + player.radius * Math.sin(normalizedAngle - globalRotation);
-    
-    createExplosion(absoluteX, absoluteY, currentPalette.player);
-}
-
-function finishGameOver() {
-    state = 'gameover';
-    ui.style.display = 'flex';
-    title.innerText = 'GAME OVER';
-    title.style.color = currentPalette.wall;
-    subtitle.innerText = 'Touch or Space to restart';
-    if (time > bestTime) {
-        bestTime = time;
-        bestDisplay.innerText = bestTime.toFixed(2);
-    }
-}
-
-function update(dt) {
-    if (state === 'playing') {
-        time += dt;
-        timeDisplay.innerText = time.toFixed(2);
-
-        // --- NEW DIFFICULTY & NOTIFICATION LOGIC ---
-        if (time <= 60) {
-            gameSpeed = 1 + (time / 30); 
+        function startGame() {
+            state = 'playing';
+            ui.style.display = 'none';
+            time = 0;
+            gameSpeed = 1;
+            rotationSpeed = 0.15;
             currentLevel = 0;
-        } else {
-            let newLevel = Math.floor((time - 60) / 30);
-            gameSpeed = 3 + newLevel;
-            
-            // Check if we just hit a new 30-second milestone
-            if (newLevel > currentLevel) {
-                currentLevel = newLevel;
-                levelUpAlpha = 1.0; // Trigger the fade-in text
+            levelUpAlpha = 0;
+            walls = [];
+            player.angle = Math.PI / 2;
+            particles = [];
+            currentPalette = palettes[Math.floor(Math.random() * palettes.length)];
+
+            if (currentMusic) {
+                currentMusic.pause();
+                currentMusic.currentTime = 0;
             }
-        }
+            const randomTrack = musicTracks[Math.floor(Math.random() * musicTracks.length)];
+            currentMusic = new Audio(randomTrack);
+            currentMusic.loop = true;
+            currentMusic.volume = 0.6;
+            currentMusic.play().catch(e => console.log("Music play failed:", e));
 
-        // Fade out the notification text slowly over 2 seconds
-        if (levelUpAlpha > 0) {
-            levelUpAlpha -= dt * 0.5; 
-        }
-        // -------------------------------------------
-
-        globalRotation += rotationSpeed * dt * gameSpeed;
-        player.angle += player.dir * player.moveSpeed * dt * gameSpeed;
-
-        for (let i = walls.length - 1; i >= 0; i--) {
-            let w = walls[i];
-            w.distance -= 200 * dt * gameSpeed;
-
-            if (w.distance < player.radius + player.size && w.distance + wallThickness > player.radius - player.size) {
-                let normalizedAngle = (player.angle - globalRotation) % (Math.PI * 2);
-                if (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
-                let slice = Math.floor(normalizedAngle / (Math.PI / 3));
-                
-                if (w.pattern[slice] === 1) triggerGameOver();
-            }
-
-            if (w.distance < hexRadius) walls.splice(i, 1);
-        }
-
-        if (walls.length === 0 || walls[walls.length - 1].distance < Math.max(width, height) - 300) {
+            initAudio();
+            lastTime = performance.now();
             createWall();
+            requestAnimationFrame(loop);
         }
-    }
 
-    if (state === 'gameover_sequence' || state === 'gameover') {
-        for (let i = particles.length - 1; i >= 0; i--) {
-            particles[i].update();
-            if (particles[i].life <= 0) {
-                particles.splice(i, 1);
+        function triggerGameOver() {
+            state = 'gameover_sequence';
+
+            if (currentMusic) {
+                currentMusic.pause();
+            }
+
+            playCrashSound();
+            let normalizedAngle = (player.angle) % (Math.PI * 2);
+            if (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
+
+            const absoluteX = cx + player.radius * Math.cos(normalizedAngle - globalRotation);
+            const absoluteY = cy + player.radius * Math.sin(normalizedAngle - globalRotation);
+
+            createExplosion(absoluteX, absoluteY, currentPalette.player);
+        }
+
+        function finishGameOver() {
+            state = 'gameover';
+            ui.style.display = 'flex';
+            title.innerText = 'GAME OVER';
+            title.style.color = currentPalette.wall;
+            subtitle.innerText = 'Touch or Space to restart';
+            if (time > bestTime) {
+                bestTime = time;
+                bestDisplay.innerText = bestTime.toFixed(2);
             }
         }
 
-        if (state === 'gameover_sequence' && particles.length === 0) {
-            finishGameOver();
+        function update(dt) {
+            if (state === 'playing') {
+                time += dt;
+                timeDisplay.innerText = time.toFixed(2);
+
+                // --- NEW DIFFICULTY & NOTIFICATION LOGIC ---
+                if (time <= 60) {
+                    gameSpeed = 1 + (time / 30);
+                    currentLevel = 0;
+                } else {
+                    let newLevel = Math.floor((time - 60) / 30);
+                    gameSpeed = 3 + newLevel;
+
+                    // Check if we just hit a new 30-second milestone
+                    if (newLevel > currentLevel) {
+                        currentLevel = newLevel;
+                        levelUpAlpha = 1.0; // Trigger the fade-in text
+                    }
+                }
+
+                // Fade out the notification text slowly over 2 seconds
+                if (levelUpAlpha > 0) {
+                    levelUpAlpha -= dt * 0.5;
+                }
+                // -------------------------------------------
+
+                globalRotation += rotationSpeed * dt * gameSpeed;
+                player.angle += player.dir * player.moveSpeed * dt * gameSpeed;
+
+                for (let i = walls.length - 1; i >= 0; i--) {
+                    let w = walls[i];
+                    w.distance -= 200 * dt * gameSpeed;
+
+                    if (w.distance < player.radius + player.size && w.distance + wallThickness > player.radius - player.size) {
+                        let normalizedAngle = (player.angle - globalRotation) % (Math.PI * 2);
+                        if (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
+                        let slice = Math.floor(normalizedAngle / (Math.PI / 3));
+
+                        if (w.pattern[slice] === 1) triggerGameOver();
+                    }
+
+                    if (w.distance < hexRadius) walls.splice(i, 1);
+                }
+
+                if (walls.length === 0 || walls[walls.length - 1].distance < Math.max(width, height) - 300) {
+                    createWall();
+                }
+            }
+
+            if (state === 'gameover_sequence' || state === 'gameover') {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update();
+                    if (particles[i].life <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+
+                if (state === 'gameover_sequence' && particles.length === 0) {
+                    finishGameOver();
+                }
+            }
         }
-    }
-}
 
-function drawPolygon(x, y, radius, sides, rotation) {
-    ctx.beginPath();
-    for (let i = 0; i < sides; i++) {
-        const angle = rotation + (i * Math.PI * 2) / sides;
-        ctx.lineTo(x + radius * Math.cos(angle), y + radius * Math.sin(angle));
-    }
-    ctx.closePath();
-}
+        function drawPolygon(x, y, radius, sides, rotation) {
+            ctx.beginPath();
+            for (let i = 0; i < sides; i++) {
+                const angle = rotation + (i * Math.PI * 2) / sides;
+                ctx.lineTo(x + radius * Math.cos(angle), y + radius * Math.sin(angle));
+            }
+            ctx.closePath();
+        }
 
-function draw() {
-    ctx.fillStyle = currentPalette.bg;
-    ctx.fillRect(0, 0, width, height);
+        function draw() {
+            ctx.fillStyle = currentPalette.bg;
+            ctx.fillRect(0, 0, width, height);
 
-    ctx.save();
-    ctx.translate(cx, cy);
-    
-    let pulse = 1;
-    if (state === 'playing') pulse = 1 + Math.sin(time * 10) * 0.05;
-    ctx.scale(pulse, pulse);
-    ctx.rotate(globalRotation);
+            ctx.save();
+            ctx.translate(cx, cy);
 
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = currentPalette.lines;
-    for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.max(width, height) * Math.cos(angle), Math.max(width, height) * Math.sin(angle));
-        ctx.stroke();
-    }
+            let pulse = 1;
+            if (state === 'playing') pulse = 1 + Math.sin(time * 10) * 0.05;
+            ctx.scale(pulse, pulse);
+            ctx.rotate(globalRotation);
 
-    ctx.lineWidth = wallThickness;
-    ctx.strokeStyle = currentPalette.wall;
-    for (let w of walls) {
-        for (let i = 0; i < 6; i++) {
-            if (w.pattern[i] === 1) {
-                const angle1 = (i * Math.PI) / 3;
-                const angle2 = ((i + 1) * Math.PI) / 3;
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = currentPalette.lines;
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
                 ctx.beginPath();
-                ctx.moveTo(w.distance * Math.cos(angle1), w.distance * Math.sin(angle1));
-                ctx.lineTo(w.distance * Math.cos(angle2), w.distance * Math.sin(angle2));
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.max(width, height) * Math.cos(angle), Math.max(width, height) * Math.sin(angle));
                 ctx.stroke();
             }
+
+            ctx.lineWidth = wallThickness;
+            ctx.strokeStyle = currentPalette.wall;
+            for (let w of walls) {
+                for (let i = 0; i < 6; i++) {
+                    if (w.pattern[i] === 1) {
+                        const angle1 = (i * Math.PI) / 3;
+                        const angle2 = ((i + 1) * Math.PI) / 3;
+                        ctx.beginPath();
+                        ctx.moveTo(w.distance * Math.cos(angle1), w.distance * Math.sin(angle1));
+                        ctx.lineTo(w.distance * Math.cos(angle2), w.distance * Math.sin(angle2));
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            ctx.fillStyle = currentPalette.center;
+            drawPolygon(0, 0, hexRadius, 6, 0);
+            ctx.fill();
+
+            if (state === 'playing') {
+                ctx.rotate(-globalRotation);
+                ctx.rotate(player.angle);
+                ctx.fillStyle = currentPalette.player;
+                ctx.beginPath();
+                ctx.moveTo(player.radius, 0);
+                ctx.lineTo(player.radius - player.size, player.size);
+                ctx.lineTo(player.radius - player.size, -player.size);
+                ctx.fill();
+            }
+
+            ctx.restore(); // We restore here so the next elements don't spin with the world
+
+            // --- DRAW SUBTLE SPEED UP NOTIFICATION ---
+            if (state === 'playing' && levelUpAlpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, levelUpAlpha);
+                ctx.fillStyle = currentPalette.player; // Matches the player's neon color
+                ctx.font = "20px 'Press Start 2P'";
+                ctx.textAlign = "center";
+                ctx.shadowColor = "#000";
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                // Draws near the top center of the screen, completely out of the way
+                ctx.fillText("SPEED UP!", cx, 80);
+                ctx.restore();
+            }
+            // -----------------------------------------
+
+            for (let p of particles) {
+                p.draw();
+            }
         }
-    }
 
-    ctx.fillStyle = currentPalette.center;
-    drawPolygon(0, 0, hexRadius, 6, 0);
-    ctx.fill();
+        function loop(timestamp) {
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
 
-    if (state === 'playing') {
-        ctx.rotate(-globalRotation);
-        ctx.rotate(player.angle);
-        ctx.fillStyle = currentPalette.player;
-        ctx.beginPath();
-        ctx.moveTo(player.radius, 0);
-        ctx.lineTo(player.radius - player.size, player.size);
-        ctx.lineTo(player.radius - player.size, -player.size);
-        ctx.fill();
-    }
+            update(dt);
+            draw();
 
-    ctx.restore(); // We restore here so the next elements don't spin with the world
-
-    // --- DRAW SUBTLE SPEED UP NOTIFICATION ---
-    if (state === 'playing' && levelUpAlpha > 0) {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, levelUpAlpha);
-        ctx.fillStyle = currentPalette.player; // Matches the player's neon color
-        ctx.font = "20px 'Press Start 2P'";
-        ctx.textAlign = "center";
-        ctx.shadowColor = "#000";
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
-        // Draws near the top center of the screen, completely out of the way
-        ctx.fillText("SPEED UP!", cx, 80); 
-        ctx.restore();
-    }
-    // -----------------------------------------
-
-    for (let p of particles) {
-        p.draw();
-    }
-}
-
-function loop(timestamp) {
-    const dt = (timestamp - lastTime) / 1000;
-    lastTime = timestamp;
-
-    update(dt);
-    draw();
-
-    if (state !== 'menu') {
-        requestAnimationFrame(loop);
-    }
-}
-
-let audioCtx;
-
-function initAudio() {
-    if (!audioCtx) {
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContext();
-        } catch (e) {
-            return;
+            if (state !== 'menu') {
+                requestAnimationFrame(loop);
+            }
         }
-    }
-    
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-}
 
-function playCrashSound() {
-    if (!audioCtx) return;
+        let audioCtx;
 
-    const osc = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+        function initAudio() {
+            if (!audioCtx) {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                } catch (e) {
+                    return;
+                }
+            }
 
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
 
-    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5); 
+        function playCrashSound() {
+            if (!audioCtx) return;
 
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
 
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.5);
-}
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
 
-currentPalette = palettes[0];
-resize();
-draw();
-</script>
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        currentPalette = palettes[0];
+        resize();
+        draw();
+    </script>
 </body>
+
 </html>
