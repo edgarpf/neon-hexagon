@@ -1,4 +1,4 @@
-# Neon Hexagon 🛑✨
+# Neon Hexagon by Gemini 3 Pro
 
 [![Play Live](https://img.shields.io/badge/Play-Live-success?style=for-the-badge&logo=github)](https://edgarpf.github.io/neon-hexagon/)
 
