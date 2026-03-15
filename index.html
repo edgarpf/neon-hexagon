@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -117,6 +116,10 @@ let gameSpeed = 1;
 let globalRotation = 0;
 let rotationSpeed = 0.15; 
 
+// Notification variables
+let currentLevel = 0;
+let levelUpAlpha = 0;
+
 const player = {
     angle: Math.PI / 2,
     radius: 60,
@@ -209,16 +212,40 @@ window.addEventListener('touchstart', (e) => {
 
 window.addEventListener('touchend', () => { player.dir = 0; });
 
+// --- MUSIC LOGIC ---
+const musicTracks = [
+    'audio/track1.mp3',
+    'audio/track2.mp3',
+    'audio/track3.mp3',
+    'audio/track4.mp3',
+    'audio/track5.mp3',
+    'audio/track6.mp3'
+];
+let currentMusic = null;
+
 function startGame() {
     state = 'playing';
     ui.style.display = 'none';
     time = 0;
     gameSpeed = 1;
     rotationSpeed = 0.15; 
+    currentLevel = 0;
+    levelUpAlpha = 0;
     walls = [];
     player.angle = Math.PI / 2;
     particles = []; 
     currentPalette = palettes[Math.floor(Math.random() * palettes.length)];
+    
+    if (currentMusic) {
+        currentMusic.pause();
+        currentMusic.currentTime = 0;
+    }
+    const randomTrack = musicTracks[Math.floor(Math.random() * musicTracks.length)];
+    currentMusic = new Audio(randomTrack);
+    currentMusic.loop = true;
+    currentMusic.volume = 0.6;
+    currentMusic.play().catch(e => console.log("Music play failed:", e));
+
     initAudio(); 
     lastTime = performance.now();
     createWall();
@@ -227,6 +254,11 @@ function startGame() {
 
 function triggerGameOver() {
     state = 'gameover_sequence';
+    
+    if (currentMusic) {
+        currentMusic.pause();
+    }
+    
     playCrashSound(); 
     let normalizedAngle = (player.angle) % (Math.PI * 2);
     if (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
@@ -254,9 +286,28 @@ function update(dt) {
         time += dt;
         timeDisplay.innerText = time.toFixed(2);
 
-        gameSpeed = 1 + (time / 30); 
+        // --- NEW DIFFICULTY & NOTIFICATION LOGIC ---
+        if (time <= 60) {
+            gameSpeed = 1 + (time / 30); 
+            currentLevel = 0;
+        } else {
+            let newLevel = Math.floor((time - 60) / 30);
+            gameSpeed = 3 + newLevel;
+            
+            // Check if we just hit a new 30-second milestone
+            if (newLevel > currentLevel) {
+                currentLevel = newLevel;
+                levelUpAlpha = 1.0; // Trigger the fade-in text
+            }
+        }
+
+        // Fade out the notification text slowly over 2 seconds
+        if (levelUpAlpha > 0) {
+            levelUpAlpha -= dt * 0.5; 
+        }
+        // -------------------------------------------
+
         globalRotation += rotationSpeed * dt * gameSpeed;
-        
         player.angle += player.dir * player.moveSpeed * dt * gameSpeed;
 
         for (let i = walls.length - 1; i >= 0; i--) {
@@ -354,7 +405,23 @@ function draw() {
         ctx.fill();
     }
 
-    ctx.restore();
+    ctx.restore(); // We restore here so the next elements don't spin with the world
+
+    // --- DRAW SUBTLE SPEED UP NOTIFICATION ---
+    if (state === 'playing' && levelUpAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, levelUpAlpha);
+        ctx.fillStyle = currentPalette.player; // Matches the player's neon color
+        ctx.font = "20px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "#000";
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        // Draws near the top center of the screen, completely out of the way
+        ctx.fillText("SPEED UP!", cx, 80); 
+        ctx.restore();
+    }
+    // -----------------------------------------
 
     for (let p of particles) {
         p.draw();
